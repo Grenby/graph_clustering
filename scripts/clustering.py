@@ -115,6 +115,34 @@ def resolve_k_means_communities(g: _nx.Graph,
             communities[c].add(u)
         communities = validate_cms(g, communities, cluster_name=cluster_name)
     return communities
+
+
+def resolve_k_means_communities_sqrt_clusters(g: _nx.Graph,
+                                              max_iteration=20,
+                                              cluster_name: str = 'cluster',
+                                              weight: str = 'length',
+                                              print_log=False):
+    c = np.sqrt(len(g.nodes))
+    eps = 20
+    l0 = 0
+    steps = 0
+    r0 = 10_000
+    while True:
+        if steps == 100:
+            break
+        steps += 1
+        x = (l0 + r0) / 2
+        communities = len(resolve_louvain_communities(g, resolution=x, cluster_name=cluster_name))
+        if abs(communities - c) < eps:
+            break
+        elif communities > c:
+            r0 = x
+        else:
+            l0 = x
+    return resolve_k_means_communities(g, resolution=(r0 + l0) / 2, max_iteration=max_iteration,
+                                       cluster_name=cluster_name, weight=weight, print_log=print_log)
+
+
 def leiden(H: nx.Graph, **kwargs) -> list[set[int]]:
     '''
     Clustering by leiden algorithm - a modification of louvain

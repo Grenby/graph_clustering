@@ -1,4 +1,5 @@
 import os
+import time
 
 import networkx as nx
 import numpy as np
@@ -40,3 +41,18 @@ def get_path(folder: str, name: str):
     if not os.path.exists(path):
         os.mkdir(path)
     return os.path.join(path, name)
+
+
+def profile(iterations=2):
+    def wrapper(func):
+        def do_calc(*args, **kwargs):
+            result = None
+            start = time.time()
+            for _ in range(iterations):
+                result = func(*args, **kwargs)
+            end = time.time()
+            return (end - start) / iterations, result
+
+        return do_calc
+
+    return wrapper
