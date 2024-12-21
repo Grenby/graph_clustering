@@ -6,6 +6,56 @@ from tqdm.auto import tqdm
 from scripts import utils
 from scripts.clustering import AbstractCommunityResolver, Community
 
+__all__ = [
+    "CentroidGraph",
+    "CentroidGraphBuilder"
+]
+
+@dataclass
+class CentroidGraph:
+    g: nx.Graph
+    cls2n: dict[int, set[int]]
+    cls2c: dict[int, int]
+    cls2hubs: dict[int, set[int]]
+    cms: Community
+
+
+@dataclass
+class CentroidGraphBuilder:
+    log: bool = False,
+    name: str = 'cluster'
+    weight: str = 'length'
+
+    def build(self, g: nx.Graph, cms: AbstractCommunityResolver | Community) -> CentroidGraph:
+        if isinstance(cms, AbstractCommunityResolver):
+            cms = cms.resolve(g)
+        cls2n = get_cls2n(g, name=self.name)
+        g1, cls2c = build_center_graph(
+            graph=g,
+            communities=cms,
+            cls2n=cls2n,
+
+            log=self.log,
+            name=self.name,
+            weight=self.weight
+        )
+        cg = CentroidGraph(
+            g=g1,
+            cls2n=cls2n,
+            cls2c=cls2c,
+            cls2hubs=get_cls2hubs(g, name=self.name),
+            cms=cms
+        )
+        return cg
+
+    def build_with_time(self, g: nx.Graph, cms: AbstractCommunityResolver | Community, iterations=1) -> (
+            tuple)[float, CentroidGraph]:
+        @utils.profile(iterations=iterations)
+        def work_inner():
+            return self.build(g, cms)
+
+        return work_inner()
+
 
 # cluster to neighboring clusters
 def get_cls2n(graph: nx.Graph, name='cluster') -> dict[int: set[int]]:
@@ -88,49 +138,3 @@ def _iter_cms(cluster_number: list[int] | set[int], communities: list[set[int]] 
     for cls in cluster_number:
         for u in communities[cls]:
             yield u
-
-
-@dataclass
-class CentroidGraph:
-    g: nx.Graph
-    cls2n: dict[int, set[int]]
-    cls2c: dict[int, int]
-    cls2hubs: dict[int, set[int]]
-    cms: Community
-
-
-@dataclass
-class CentroidGraphBuilder:
-    log: bool = False,
-    name: str = 'cluster'
-    weight: str = 'length'
-
-    def build(self, g: nx.Graph, cms: AbstractCommunityResolver | Community) -> CentroidGraph:
-        if isinstance(cms, AbstractCommunityResolver):
-            cms = cms.resolve(g)
-        cls2n = get_cls2n(g, name=self.name)
-        g1, cls2c = build_center_graph(
-            graph=g,
-            communities=cms,
-            cls2n=cls2n,
-
-            log=self.log,
-            name=self.name,
-            weight=self.weight
-        )
-        cg = CentroidGraph(
-            g=g1,
-            cls2n=cls2n,
-            cls2c=cls2c,
-            cls2hubs=get_cls2hubs(g, name=self.name),
-            cms=cms
-        )
-        return cg
-
-    def build_with_time(self, g: nx.Graph, cms: AbstractCommunityResolver | Community, iterations=1) -> (
-            tuple)[float, CentroidGraph]:
-        @utils.profile(iterations=iterations)
-        def work_inner():
-            return self.build(g, cms)
-
-        return work_inner()

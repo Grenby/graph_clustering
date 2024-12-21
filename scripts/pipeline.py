@@ -6,7 +6,7 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from scripts import utils
-from scripts.pfa import PathFinding
+from scripts.path_findings.pfa import PathFinding
 
 __version__ = "1.0"
 

@@ -6,6 +6,14 @@ import networkx as nx
 import numpy as np
 import random
 
+__all__ = [
+    "get_path",
+    "get_opt_cluster_count",
+    "get_node_for_initial_graph",
+    "generate_points",
+    "read_points"
+]
+
 
 # оптимальное количество кластеров из статьи
 def get_opt_cluster_count(nodes: int) -> int:

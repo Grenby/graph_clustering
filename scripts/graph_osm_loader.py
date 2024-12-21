@@ -6,9 +6,12 @@ import osmnx as ox
 
 from scripts import utils
 
+__all__ = ["get_graph",
+           "cities"]
+
 
 # load graph
-def get_graph(city_id: str = 'R2555133', dir = False) -> nx.Graph | nx.DiGraph:
+def get_graph(city_id: str = 'R2555133', dir=False) -> nx.Graph | nx.DiGraph:
     id_graph = city_id
     name = f'{id_graph}.pickle' if not dir else f'{id_graph}_dit.pickle'
     path = utils.get_path('graphs', name)

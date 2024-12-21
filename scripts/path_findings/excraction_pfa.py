@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from scripts.centroids_graph_builder import CentroidGraph
-from scripts.pfa import PathFinding, Path, PathFindingCls
+from scripts.path_findings.pfa import PathFinding, Path, PathFindingCls
 
 __all__ = [
     'ExtractionPfa'

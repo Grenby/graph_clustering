@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-from scripts.clustering import Community
-from scripts.pfa import PathFinding, Path, PathFindingCls
+from scripts.path_findings.pfa import Path, PathFindingCls
 from heapq import heappop, heappush
 from itertools import count
 
@@ -9,6 +8,8 @@ __all__ = [
     'Dijkstra',
     'BiDijkstra'
 ]
+
+
 @dataclass
 class Dijkstra(PathFindingCls):
     def find_path_cls(self, start: int, end: int, cms: set[int] | None) -> Path:

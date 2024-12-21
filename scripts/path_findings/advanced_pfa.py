@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 
-from scripts.pfa import PathFindingAdvanced, PathMatrix
+from scripts.path_findings.pfa import PathFindingAdvanced, PathMatrix
 
-
+__all__ = [
+    "DijkstraPathFindingAdvanced"
+]
 @dataclass
 class DijkstraPathFindingAdvanced(PathFindingAdvanced):
 

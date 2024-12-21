@@ -4,13 +4,21 @@ from typing import NewType as _Nt
 
 import networkx as nx
 
+__all__ = [
+    "Path",
+    "PathMatrix",
+    "PathFinding",
+    "PathFindingCls",
+    "PathFindingAdvanced"
+]
+
 Path = _Nt('Path', tuple[float, list[int]])
 PathMatrix = _Nt('Path', dict[int, tuple[float, int]])
 
 
 @dataclass
 class PathFinding(ABC):
-    g: nx.Graph | None = None
+    g: nx.Graph | None
 
     @abstractmethod
     def find_path(self, start: int, end: int) -> Path:

@@ -4,7 +4,7 @@ from itertools import count
 
 import networkx as nx
 
-from scripts.pfa import PathFinding, Path
+from scripts.path_findings.pfa import PathFinding, Path
 
 __all__ = [
     'ChPfa'

@@ -4,7 +4,7 @@ import networkx as nx
 from tqdm.auto import trange
 
 from scripts.path_findings.ch_pfa import ChPfa
-from scripts.pfa import PathFinding
+from scripts.path_findings.pfa import PathFinding
 
 __all__ = [
     "ChBuilder",
