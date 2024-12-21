@@ -27,6 +27,7 @@ def get_graph(city_id: str = 'R2555133', dir = False) -> nx.Graph | nx.DiGraph:
             pickle.dump(g, fp)
             fp.close()
     assert g is not None
+    g.remove_edges_from(nx.selfloop_edges(g))
     return g
 
 

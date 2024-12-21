@@ -1,5 +1,10 @@
+from dataclasses import dataclass
+
 import networkx as nx
-from tqdm import tqdm
+from tqdm.auto import tqdm
+
+from scripts import utils
+from scripts.clustering import AbstractCommunityResolver, Community
 
 
 # cluster to neighboring clusters
@@ -43,10 +48,11 @@ def get_cls2hubs(graph: nx.Graph, name='cluster') -> dict[int: set[int]]:
 # build_center_graph
 def build_center_graph(
         graph: nx.Graph,
-        communities: list[set[int]],
+        communities: Community,
         cls2n: dict[int: set[int]],
         log: bool = False,
-        name: str = 'cluster'
+        name: str = 'cluster',
+        weight: str = 'length'
 ) -> tuple[nx.Graph, dict[int, int]]:
     x_graph = nx.Graph()
     cls2c = {}
@@ -54,7 +60,7 @@ def build_center_graph(
         communities)
     for cls, _ in iter:
         gc = extract_cluster_list_subgraph(graph, [cls], communities)
-        min_node = nx.barycenter(gc, weight='length')[0]
+        min_node = nx.barycenter(gc, weight=weight)[0]
         du = graph.nodes()[min_node]
         x_graph.add_node(graph.nodes()[min_node][name], **du)
         cls2c[graph.nodes()[min_node][name]] = min_node
@@ -64,7 +70,7 @@ def build_center_graph(
     iter = tqdm(x_graph.nodes(), desc='find edges') if log else x_graph.nodes()
     for u in iter:
         for v in cls2n[u]:
-            l = nx.single_source_dijkstra(graph, source=cls2c[u], target=cls2c[v], weight='length')[0]
+            l = nx.single_source_dijkstra(graph, source=cls2c[u], target=cls2c[v], weight=weight)[0]
             x_graph.add_edge(u, v, length=l)
     return x_graph, cls2c
 
@@ -82,3 +88,49 @@ def _iter_cms(cluster_number: list[int] | set[int], communities: list[set[int]] 
     for cls in cluster_number:
         for u in communities[cls]:
             yield u
+
+
+@dataclass
+class CentroidGraph:
+    g: nx.Graph
+    cls2n: dict[int, set[int]]
+    cls2c: dict[int, int]
+    cls2hubs: dict[int, set[int]]
+    cms: Community
+
+
+@dataclass
+class CentroidGraphBuilder:
+    log: bool = False,
+    name: str = 'cluster'
+    weight: str = 'length'
+
+    def build(self, g: nx.Graph, cms: AbstractCommunityResolver | Community) -> CentroidGraph:
+        if isinstance(cms, AbstractCommunityResolver):
+            cms = cms.resolve(g)
+        cls2n = get_cls2n(g, name=self.name)
+        g1, cls2c = build_center_graph(
+            graph=g,
+            communities=cms,
+            cls2n=cls2n,
+
+            log=self.log,
+            name=self.name,
+            weight=self.weight
+        )
+        cg = CentroidGraph(
+            g=g1,
+            cls2n=cls2n,
+            cls2c=cls2c,
+            cls2hubs=get_cls2hubs(g, name=self.name),
+            cms=cms
+        )
+        return cg
+
+    def build_with_time(self, g: nx.Graph, cms: AbstractCommunityResolver | Community, iterations=1) -> (
+            tuple)[float, CentroidGraph]:
+        @utils.profile(iterations=iterations)
+        def work_inner():
+            return self.build(g, cms)
+
+        return work_inner()

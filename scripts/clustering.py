@@ -1,26 +1,22 @@
+import logging as log
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from heapq import heappop as _pop, heappush as _push
 from itertools import count as _count
 from typing import NewType as _Nt, Union as _Union
 
-import networkx as _nx
-import logging as log
-from tqdm import trange as _trange
-import numpy as np
-import networkx as nx
 import igraph as ig
-
-from . import utils
-from tqdm import tqdm
-
-from sklearn.cluster import HDBSCAN, KMeans
-from gudhi.clustering.tomato import Tomato
 import leidenalg as la
+import networkx as _nx
+import numpy as np
+from tqdm import trange as _trange
 
 __version__ = "1.0"
 
 __all__ = [
+    "AbstractCommunityResolver",
     "Community",
-    "dijkstra_near_neighbours",
+    "k_means",
     "validate_cms",
     "resolve_louvain_communities",
     "resolve_k_means_communities"
@@ -29,9 +25,75 @@ __all__ = [
 Community = _Nt('Community', _Union[list[set[int]], tuple[set[int]]])
 
 
-def dijkstra_near_neighbours(graph: _nx.Graph,
-                             starts: list[int],
-                             weight: str = 'length'):
+@dataclass
+class AbstractCommunityResolver(ABC):
+    seed: int = 1534
+    weight: str = 'length'
+    cluster_name: str = 'cluster'
+
+    @abstractmethod
+    def resolve(self, g: _nx.Graph) -> Community:
+        pass
+
+
+@dataclass
+class LouvainCommunityResolver(AbstractCommunityResolver):
+    resolution: float = 1
+
+    def resolve(self, g: _nx.Graph) -> Community:
+        communities = _nx.community.louvain_communities(g,
+                                                        seed=self.seed,
+                                                        weight=self.weight,
+                                                        resolution=self.resolution)
+        return validate_cms(g, communities, cluster_name=self.cluster_name)
+
+
+@dataclass
+class LouvainKMeansCommunityResolver(LouvainCommunityResolver):
+    max_iteration: int = 20,
+    print_log: bool = False
+
+    def resolve(self, g: _nx.Graph) -> Community:
+        communities = super().resolve(g)
+        return self.do_resolve(g, communities)
+
+    def do_resolve(self, g: _nx.Graph, communities: Community) -> Community:
+        if self.print_log:
+            log.info(f'communities: {len(communities)}')
+        _iter = _trange(self.max_iteration) if self.print_log else range(self.max_iteration)
+        do = True
+        for _ in _iter:
+            if not do:
+                continue
+            centers = []
+            for i, cls in enumerate(communities):
+                gc = g.subgraph(communities[i])
+                center = _nx.barycenter(gc, weight=self.weight)[0]
+                centers.append(center)
+
+            node2cls = k_means(g, centers, weight=self.weight)
+            do = False
+            for u, i in node2cls.items():
+                if u not in communities[i]:
+                    do = True
+                    break
+            if not do:
+                continue
+
+            communities = [set() for _ in range(len(centers))]
+            for u, c in node2cls.items():
+                communities[c].add(u)
+            communities = validate_cms(g, communities, cluster_name=self.cluster_name)
+        return communities
+
+@dataclass
+class LeidenCommunityResolver(LouvainCommunityResolver):
+    pass
+
+
+def k_means(graph: _nx.Graph,
+            starts: list[int],
+            weight: str = 'length') -> dict[int, int]:
     adjacency = graph._adj
     c = _count()
     push = _push
@@ -70,16 +132,16 @@ def validate_cms(
     return cls
 
 
-# resolve_communities
-def resolve_louvain_communities(H: _nx.Graph,
+def resolve_louvain_communities(g: _nx.Graph,
                                 resolution: float = 1,
                                 cluster_name: str = 'cluster',
                                 weight: str = 'length') -> Community:
-    communities = _nx.community.louvain_communities(H,
-                                                    seed=1534,
-                                                    weight=weight,
-                                                    resolution=resolution)
-    return validate_cms(H, communities, cluster_name=cluster_name)
+    r: AbstractCommunityResolver = LouvainCommunityResolver(
+        resolution=resolution,
+        cluster_name=cluster_name,
+        weight=weight
+    )
+    return r.resolve(g)
 
 
 def resolve_k_means_communities(g: _nx.Graph,
@@ -88,33 +150,14 @@ def resolve_k_means_communities(g: _nx.Graph,
                                 cluster_name: str = 'cluster',
                                 weight: str = 'length',
                                 print_log=False):
-    communities = resolve_louvain_communities(g, resolution=resolution, cluster_name=cluster_name)
-    log.info(f'communities: {len(communities)}')
-    _iter = _trange(max_iteration) if print_log else range(max_iteration)
-    do = True
-    for _ in _iter:
-        if not do:
-            continue
-        centers = []
-        for i, cls in enumerate(communities):
-            gc = g.subgraph(communities[i])
-            center = _nx.barycenter(gc, weight=weight)[0]
-            centers.append(center)
-
-        node2cls = dijkstra_near_neighbours(g, centers, weight=weight)
-        do = False
-        for u, i in node2cls.items():
-            if u not in communities[i]:
-                do = True
-                break
-        if not do:
-            continue
-
-        communities = [set() for _ in range(len(centers))]
-        for u, c in node2cls.items():
-            communities[c].add(u)
-        communities = validate_cms(g, communities, cluster_name=cluster_name)
-    return communities
+    r: AbstractCommunityResolver = LouvainKMeansCommunityResolver(
+        resolution=resolution,
+        max_iteration=max_iteration,
+        cluster_name=cluster_name,
+        weight=weight,
+        print_log=print_log
+    )
+    return r.resolve(g)
 
 
 def resolve_k_means_communities_sqrt_clusters(g: _nx.Graph,
@@ -143,7 +186,7 @@ def resolve_k_means_communities_sqrt_clusters(g: _nx.Graph,
                                        cluster_name=cluster_name, weight=weight, print_log=print_log)
 
 
-def leiden(H: nx.Graph, **kwargs) -> list[set[int]]:
+def leiden(H: _nx.Graph, **kwargs) -> list[set[int]]:
     '''
     Clustering by leiden algorithm - a modification of louvain
     '''
@@ -159,4 +202,4 @@ def leiden(H: nx.Graph, **kwargs) -> list[set[int]]:
             node_set.add(G.vs[v]['_nx_name'])
         communities.append(node_set)
 
-    return utils.validate_cms(H, communities)
+    return validate_cms(H, communities)

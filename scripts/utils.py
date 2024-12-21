@@ -1,4 +1,5 @@
 import os
+import pickle
 import time
 
 import networkx as nx
@@ -12,26 +13,31 @@ def get_opt_cluster_count(nodes: int) -> int:
     return int(alpha)
 
 
-def validate_cms(H: nx.Graph, communities: list[set[int]] | tuple[set[int]]) -> list[set[int]]:
-    cls = []
-    if not H.is_directed():
-        for i, c in enumerate(communities):
-            for n in nx.connected_components(H.subgraph(c)):
-                cls.append(n)
-    else:
-        cls = communities
-    for i, ids in enumerate(cls):
-        for j in ids:
-            H.nodes()[j]['cluster'] = i
-    return cls
-
-
-def get_node_for_initial_graph_v2(graph: nx.Graph):
+def get_node_for_initial_graph(graph: nx.Graph):
     nodes = list(graph.nodes())
     f, t = random.choice(nodes), random.choice(nodes)
     while f == t:
         f, t = random.choice(nodes), random.choice(nodes)
     return f, t
+
+
+def generate_points(graph: nx.Graph, num=1000) -> list[tuple[int, int]]:
+    return [get_node_for_initial_graph(graph) for _ in range(num)]
+
+
+def read_points(graph_name: str, graph: nx.Graph, num=1000) -> list[tuple[int, int]]:
+    path = get_path('pouits', f'points_{graph_name}-{num}.pickle')
+
+    if os.path.exists(path):
+        with open(path, 'rb') as fp:
+            points = pickle.load(fp)
+            fp.close()
+    else:
+        points = generate_points(graph, num)
+        with open(path, 'wb') as fp:
+            pickle.dump(points, fp)
+            fp.close()
+    return points
 
 
 def get_path(folder: str, name: str):
