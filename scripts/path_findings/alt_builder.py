@@ -36,20 +36,19 @@ class ClusterAltBuilder(AltBuilder):
                                                         resolution=self.resolution)
         logging.info(f"cms: {len(communities)}")
         nodes = []
-        for c in communities:
+        for c in tqdm(communities):
             gg = g.subgraph(c)
-            nodes.append(nx.periphery(gg, weight='length')[0])
+            nodes.append(nx.barycenter(gg, weight='length')[0])
         return calculate_distances(g, nodes)
 
 
 def calculate_distances(g: nx.Graph, nodes: list[int]) -> PathFinding:
-    pfa = DijkstraPathFindingAdvanced(g)
     nodes2id = {u: i for i, u in enumerate(g.nodes())}
     label2id = {u: i for i, u in enumerate(nodes)}
     nodes = set(nodes)
     dst_matrix = np.zeros((len(g.nodes), len(nodes)))
-    for u in tqdm(g.nodes()):
-        dst = pfa.find_path_to_set(u, nodes)
-        for v in nodes:
-            dst_matrix[nodes2id[u], label2id[v]] = dst[v][0]
+    for v in tqdm(nodes):
+        dst = nx.single_source_dijkstra_path_length(g, v, weight='length')
+        for u in g.nodes():
+            dst_matrix[nodes2id[u], label2id[v]] = dst[u]
     return AltPfa(g=g, distances=dst_matrix, node2id=nodes2id)

@@ -16,4 +16,4 @@ class AltPfa(AStar):
     def h_fun(self, u, v):
         d = self.distances
         u, v = self.nodes2id[u], self.nodes2id[v]
-        return np.max(np.abs(d[u, :] - d[v, :]))
+        return max(abs(d[u, l] - d[v, l]) for l in range(len(d[0])))
