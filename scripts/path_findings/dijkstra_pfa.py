@@ -3,11 +3,16 @@ from dataclasses import dataclass
 from scripts.path_findings.pfa import Path, PathFindingCls
 from heapq import heappop, heappush
 from itertools import count
+from typing import Callable
 
 __all__ = [
     'Dijkstra',
     'BiDijkstra'
 ]
+
+
+def zero(u, v):
+    return 0
 
 
 @dataclass
@@ -123,3 +128,50 @@ class BiDijkstra(PathFindingCls):
             e = dist[1][e][2]
         path[-1] = e
         return union_dst, path
+
+
+@dataclass
+class AStar(PathFindingCls):
+    h: Callable = zero
+
+    def h_fun(self, u, v):
+        return self.h_fun(u, v)
+
+    def find_path_cls(self, start: int, end: int, cms: set[int] | None) -> Path:
+        if start == end:
+            return 0.0, [start]
+        h = self.h_fun
+        graph = self.g
+        adjacency = graph._adj
+        nodes = graph.nodes()
+        c = count()
+        push = heappush
+        pop = heappop
+        dist = {}
+        pred = {}
+        fringe = []
+        push(fringe, (0.0, next(c), 0.0, 0, start, None))
+        while fringe:
+            (_, _, d, n, v, p) = pop(fringe)
+            if v in dist:
+                continue
+            dist[v] = (d, n)
+            pred[v] = p
+            if v == end:
+                break
+            for u, e in adjacency[v].items():
+                if cms and nodes[u]['cluster'] not in cms:
+                    continue
+                vu_dist = d + e['length']
+                if u not in dist:
+                    push(fringe, (vu_dist + h(u, end), next(c), vu_dist, n + 1, u, v))
+        d, n = dist[end]
+        n += 1
+        path = [None] * n
+        i = n - 1
+        e = end
+        while i >= 0:
+            path[i] = e
+            i -= 1
+            e = pred[e]
+        return d, path
