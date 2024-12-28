@@ -135,7 +135,7 @@ class AStar(PathFindingCls):
     h: Callable = zero
 
     def h_fun(self, u, v):
-        return self.h_fun(u, v)
+        return self.h(u, v)
 
     def find_path_cls(self, start: int, end: int, cms: set[int] | None) -> Path:
         if start == end:
@@ -147,31 +147,25 @@ class AStar(PathFindingCls):
         c = count()
         push = heappush
         pop = heappop
-        dist = {}
-        pred = {}
         fringe = []
-        push(fringe, (0.0, next(c), 0.0, 0, start, None))
+
+        push(fringe, (0.0, next(c), 0.0, start))
+        dist = {start: (0, None)}
         while fringe:
-            (_, _, d, n, v, p) = pop(fringe)
-            if v in dist:
-                continue
-            dist[v] = (d, n)
-            pred[v] = p
+            (_, _, d, v) = pop(fringe)
             if v == end:
                 break
             for u, e in adjacency[v].items():
                 if cms and nodes[u]['cluster'] not in cms:
                     continue
                 vu_dist = d + e['length']
-                if u not in dist:
-                    push(fringe, (vu_dist + h(u, end), next(c), vu_dist, n + 1, u, v))
-        d, n = dist[end]
-        n += 1
-        path = [None] * n
-        i = n - 1
+                if u not in dist or vu_dist < dist[u][0]:
+                    dist[u] = (vu_dist, v)
+                    push(fringe, (vu_dist + h(u, end), next(c), vu_dist, u))
+
+        path = []
         e = end
-        while i >= 0:
-            path[i] = e
-            i -= 1
-            e = pred[e]
-        return d, path
+        while e is not None:
+            path.append(e)
+            e = dist[e][1]
+        return d, path[::-1]

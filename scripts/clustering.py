@@ -19,7 +19,8 @@ __all__ = [
     "k_means",
     "validate_cms",
     "resolve_louvain_communities",
-    "resolve_k_means_communities"
+    "resolve_k_means_communities",
+    "LouvainKMeansCommunityResolver"
 ]
 
 Community = _Nt('Community', _Union[list[set[int]], tuple[set[int]]])
@@ -50,7 +51,7 @@ class LouvainCommunityResolver(AbstractCommunityResolver):
 
 @dataclass
 class LouvainKMeansCommunityResolver(LouvainCommunityResolver):
-    max_iteration: int = 20,
+    max_iteration: int = 20
     print_log: bool = False
 
     def resolve(self, g: _nx.Graph) -> Community:
