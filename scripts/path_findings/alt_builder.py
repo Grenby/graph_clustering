@@ -5,9 +5,10 @@ import random
 import networkx as nx
 import numpy as np
 
-from scripts import PathFinding, DijkstraPathFindingAdvanced
-from scripts.path_findings.alt import AltPfa
+from scripts import PathFinding
 from tqdm.auto import tqdm
+
+from scripts.path_findings.dijkstra_pfa import AStar
 
 
 class AltBuilder(ABC):
@@ -31,15 +32,26 @@ class ClusterAltBuilder(AltBuilder):
 
     def build_ch_pfa(self, g: nx.Graph) -> PathFinding:
         communities = nx.community.louvain_communities(g,
-                                                        seed=123,
-                                                        weight='length',
-                                                        resolution=self.resolution)
+                                                       seed=123,
+                                                       weight='length',
+                                                       resolution=self.resolution)
         logging.info(f"cms: {len(communities)}")
         nodes = []
         for c in tqdm(communities):
             gg = g.subgraph(c)
             nodes.append(nx.barycenter(gg, weight='length')[0])
         return calculate_distances(g, nodes)
+
+
+@dataclass
+class AltHFun:
+    dst_matrix: np.ndarray
+    node2id: dict[int, int]
+
+    def __call__(self, u, v):
+        d = self.dst_matrix
+        u, v = self.node2id[u], self.node2id[v]
+        return max(abs(d[u, l] - d[v, l]) for l in range(len(d[0])))
 
 
 def calculate_distances(g: nx.Graph, nodes: list[int]) -> PathFinding:
@@ -51,4 +63,4 @@ def calculate_distances(g: nx.Graph, nodes: list[int]) -> PathFinding:
         dst = nx.single_source_dijkstra_path_length(g, v, weight='length')
         for u in g.nodes():
             dst_matrix[nodes2id[u], label2id[v]] = dst[u]
-    return AltPfa(g=g, distances=dst_matrix, node2id=nodes2id)
+    return AStar(g=g, h=AltHFun(dst_matrix=dst_matrix, node2id=nodes2id))

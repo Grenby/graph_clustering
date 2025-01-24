@@ -134,13 +134,10 @@ class BiDijkstra(PathFindingCls):
 class AStar(PathFindingCls):
     h: Callable = zero
 
-    def h_fun(self, u, v):
-        return self.h(u, v)
-
     def find_path_cls(self, start: int, end: int, cms: set[int] | None) -> Path:
         if start == end:
             return 0.0, [start]
-        h = self.h_fun
+        h = self.h
         graph = self.g
         adjacency = graph._adj
         nodes = graph.nodes()

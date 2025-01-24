@@ -10,7 +10,6 @@ __all__ = [
 
 @dataclass
 class ExtractionPfa(PathFinding):
-    cg: CentroidGraph
     upper: PathFinding
     down: PathFindingCls
     cluster_name: str = 'cluster'

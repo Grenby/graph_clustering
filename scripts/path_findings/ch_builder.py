@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 import networkx as nx
 from tqdm.auto import trange
@@ -18,9 +19,12 @@ class ChBuilder(ABC):
         pass
 
 
+@dataclass
 class GreedyChBuilder(ChBuilder):
+    print_log: bool = False
+
     def build_ch_pfa(self, g: nx.Graph) -> PathFinding:
-        return get_ch_pfa(g)
+        return get_ch_pfa(g, print_log=self.print_log)
 
 
 def _add_edges(graph: nx.Graph,
@@ -52,11 +56,12 @@ def _add_edges(graph: nx.Graph,
         c_graph.add_edge(u, w, length=l)
 
 
-def get_ch_pfa(graph: nx.Graph) -> PathFinding:
+def get_ch_pfa(graph: nx.Graph, print_log=False) -> PathFinding:
     edges_to_nodes: dict[tuple[int, int], int] = {}
     gg = graph.copy()
     cg = graph.copy()
-    for i in trange(len(graph.nodes), desc='build ch graph'):
+    it = trange(len(graph.nodes), desc='build ch graph') if print_log else range(len(graph.nodes()))
+    for i in it:
         nodes = [(u, d) for u, d in nx.degree(cg)]
         u = min(nodes, key=lambda x: x[1])[0]
         gg.nodes()[u]['i'] = i

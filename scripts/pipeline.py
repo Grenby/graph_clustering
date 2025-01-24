@@ -76,7 +76,7 @@ class PfaComparator:
 
     workers: int = 4
     iterations: int = 4
-    print_log = True
+    print_log : bool= True
 
     def test(self, pfa: PathFinding, u: int, v: int):
         @utils.profile(iterations=self.iterations)
