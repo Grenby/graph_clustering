@@ -13,17 +13,17 @@ from heapq import heappop, heappush
 from itertools import count
 
 
-
-
 class Builder(ABC):
     @abstractmethod
     def build_astar(self, g: nx.Graph, cms: AbstractCommunityResolver | Community) -> PathFinding:
         pass
 
+
 @dataclass
 class MinClusterDistanceCallable:
     nodes: list[dict]
     d_cluster: np.ndarray
+
     def __call__(self, u, v):
         nodes = self.nodes
         d_clusters = self.d_cluster
@@ -32,10 +32,12 @@ class MinClusterDistanceCallable:
         c12 = n2['cluster']
         return d_clusters[c11, c12]
 
+
 @dataclass
 class MinClusterDistance(Builder):
     workers: int = 4
-    cluster = 'cluster'
+    cluster: str = 'cluster'
+    log: bool = False
 
     def calc(self, data):
         points, name, cms, g = data
@@ -65,8 +67,10 @@ class MinClusterDistance(Builder):
             d_clusters = self.calc(data[0])
         else:
             with Pool(w) as p:
-                d_clusters = sum(tqdm(p.imap_unordered(self.calc, data), total=len(data)))
-
+                if self.log:
+                    d_clusters = sum(tqdm(p.imap_unordered(self.calc, data), total=len(data)))
+                else:
+                    d_clusters = sum(p.imap_unordered(self.calc, data))
         nodes = g.nodes()
         return AStar(g, h=MinClusterDistanceCallable(nodes, d_clusters))
 
