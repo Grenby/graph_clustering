@@ -30,7 +30,7 @@ def get_node_for_initial_graph(graph: nx.Graph):
 
 
 def generate_points(graph: nx.Graph, num=1000) -> list[tuple[int, int]]:
-    return [get_node_for_initial_graph(graph) for _ in range(num)]
+        return [get_node_for_initial_graph(graph) for _ in range(num)]
 
 
 def read_points(graph_name: str, graph: nx.Graph, num=1000) -> list[tuple[int, int]]:

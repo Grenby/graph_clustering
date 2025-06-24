@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from heapq import heappop as _pop, heappush as _push
 from itertools import count as _count
-from typing import NewType as _Nt, Union as _Union
+from typing import NewType as _Nt, Union as _Union, Optional
 
 import igraph as ig
 import leidenalg as la
@@ -50,14 +50,16 @@ class LouvainCommunityResolver(AbstractCommunityResolver):
 
 @dataclass
 class LouvainKMeansCommunityResolver(LouvainCommunityResolver):
-    max_iteration: int = 20,
+    max_iteration: int = 20
     print_log: bool = False
+    kmeans_weight: Optional[str] = None
 
     def resolve(self, g: _nx.Graph) -> Community:
         communities = super().resolve(g)
         return self.do_resolve(g, communities)
 
     def do_resolve(self, g: _nx.Graph, communities: Community) -> Community:
+        kmeans_weight = self.kmeans_weight if self.kmeans_weight is not None else self.weight
         if self.print_log:
             log.info(f'communities: {len(communities)}')
         _iter = _trange(self.max_iteration) if self.print_log else range(self.max_iteration)
@@ -68,10 +70,10 @@ class LouvainKMeansCommunityResolver(LouvainCommunityResolver):
             centers = []
             for i, cls in enumerate(communities):
                 gc = g.subgraph(communities[i])
-                center = _nx.barycenter(gc, weight=self.weight)[0]
+                center = _nx.barycenter(gc, weight=kmeans_weight)[0]
                 centers.append(center)
 
-            node2cls = k_means(g, centers, weight=self.weight)
+            node2cls = k_means(g, centers, weight=kmeans_weight)
             do = False
             for u, i in node2cls.items():
                 if u not in communities[i]:
@@ -85,6 +87,7 @@ class LouvainKMeansCommunityResolver(LouvainCommunityResolver):
                 communities[c].add(u)
             communities = validate_cms(g, communities, cluster_name=self.cluster_name)
         return communities
+
 
 @dataclass
 class LeidenCommunityResolver(LouvainCommunityResolver):
